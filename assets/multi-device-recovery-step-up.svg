@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" fill="none" font-family="Arial, sans-serif">
+<defs>
+<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#333"/></marker>
+</defs>
+<rect x="20" y="22" width="1160" height="720" rx="24" fill="#e5e7eb"/>
+<rect x="16" y="16" width="1160" height="720" rx="24" fill="#fff" stroke="#d0d7de"/>
+<text x="596" y="54" text-anchor="middle" font-size="26" font-weight="700" fill="#111">Multi-device Recovery and Step-up Auth</text>
+<text x="596" y="79" text-anchor="middle" font-size="14" fill="#555">Do not stop at the first passkey, and do not trust one old login forever</text>
+
+<rect x="48" y="118" width="520" height="560" rx="20" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="308" y="153" text-anchor="middle" font-size="20" font-weight="700" fill="#111">Backup credential strategy</text>
+
+<rect x="118" y="190" width="380" height="78" rx="14" fill="#dbeafe" stroke="#d0d7de"/>
+<text x="308" y="220" text-anchor="middle" font-size="16" font-weight="700" fill="#111">1. Register main device passkey</text>
+<text x="308" y="242" text-anchor="middle" font-size="14" fill="#555">Phone or laptop platform authenticator</text>
+
+<rect x="118" y="306" width="380" height="78" rx="14" fill="#dcfce7" stroke="#d0d7de"/>
+<text x="308" y="336" text-anchor="middle" font-size="16" font-weight="700" fill="#111">2. Add a second credential</text>
+<text x="308" y="358" text-anchor="middle" font-size="14" fill="#555">Security key or another trusted device</text>
+
+<rect x="118" y="422" width="380" height="78" rx="14" fill="#fef9c3" stroke="#d0d7de"/>
+<text x="308" y="452" text-anchor="middle" font-size="16" font-weight="700" fill="#111">3. Verify recovery channel</text>
+<text x="308" y="474" text-anchor="middle" font-size="14" fill="#555">Email link or recovery code flow</text>
+
+<rect x="118" y="538" width="380" height="96" rx="14" fill="#fce7f3" stroke="#d0d7de"/>
+<text x="308" y="568" text-anchor="middle" font-size="16" font-weight="700" fill="#111">4. Show device inventory</text>
+<text x="308" y="590" text-anchor="middle" font-size="14" fill="#555">List credential name, type, and last use</text>
+<text x="308" y="612" text-anchor="middle" font-size="14" fill="#555">Let users revoke lost devices fast</text>
+
+<line x1="308" y1="268" x2="308" y2="306" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="308" y1="384" x2="308" y2="422" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="308" y1="500" x2="308" y2="538" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+
+<rect x="632" y="118" width="520" height="560" rx="20" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="892" y="153" text-anchor="middle" font-size="20" font-weight="700" fill="#111">Step-up for risky actions</text>
+
+<rect x="702" y="190" width="380" height="78" rx="14" fill="#ffedd5" stroke="#d0d7de"/>
+<text x="892" y="220" text-anchor="middle" font-size="16" font-weight="700" fill="#111">1. User asks for a risky action</text>
+<text x="892" y="242" text-anchor="middle" font-size="14" fill="#555">Payout, email change, API key, delete action</text>
+
+<rect x="702" y="306" width="380" height="78" rx="14" fill="#e9d5ff" stroke="#d0d7de"/>
+<text x="892" y="336" text-anchor="middle" font-size="16" font-weight="700" fill="#111">2. Server asks for fresh proof</text>
+<text x="892" y="358" text-anchor="middle" font-size="14" fill="#555">New challenge, userVerification required</text>
+
+<rect x="702" y="422" width="380" height="78" rx="14" fill="#dbeafe" stroke="#d0d7de"/>
+<text x="892" y="452" text-anchor="middle" font-size="16" font-weight="700" fill="#111">3. Device signs again</text>
+<text x="892" y="474" text-anchor="middle" font-size="14" fill="#555">Fresh assertion, same public key model</text>
+
+<rect x="702" y="538" width="380" height="96" rx="14" fill="#dcfce7" stroke="#d0d7de"/>
+<text x="892" y="568" text-anchor="middle" font-size="16" font-weight="700" fill="#111">4. Grant short step-up window</text>
+<text x="892" y="590" text-anchor="middle" font-size="14" fill="#555">Allow the risky route for a few minutes</text>
+<text x="892" y="612" text-anchor="middle" font-size="14" fill="#555">Then require fresh proof again</text>
+
+<line x1="892" y1="268" x2="892" y2="306" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="892" y1="384" x2="892" y2="422" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="892" y1="500" x2="892" y2="538" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+</svg>

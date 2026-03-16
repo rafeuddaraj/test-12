@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" fill="none" font-family="Arial, sans-serif">
+<defs>
+<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#333"/></marker>
+</defs>
+<rect x="20" y="22" width="1160" height="720" rx="24" fill="#e5e7eb"/>
+<rect x="16" y="16" width="1160" height="720" rx="24" fill="#fff" stroke="#d0d7de"/>
+<text x="596" y="54" text-anchor="middle" font-size="26" font-weight="700" fill="#111">JWT Replay vs WebAuthn Challenge Flow</text>
+<text x="596" y="79" text-anchor="middle" font-size="14" fill="#555">Reusable token on one side, signed challenge on the other</text>
+
+<rect x="48" y="110" width="520" height="590" rx="20" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="308" y="145" text-anchor="middle" font-size="20" font-weight="700" fill="#111">Reusable JWT path</text>
+
+<rect x="118" y="178" width="380" height="78" rx="14" fill="#dbeafe" stroke="#d0d7de"/>
+<text x="308" y="208" text-anchor="middle" font-size="16" font-weight="700" fill="#111">1. Login succeeds</text>
+<text x="308" y="230" text-anchor="middle" font-size="14" fill="#555">Server issues a bearer token</text>
+
+<rect x="118" y="294" width="380" height="78" rx="14" fill="#fef9c3" stroke="#d0d7de"/>
+<text x="308" y="324" text-anchor="middle" font-size="16" font-weight="700" fill="#111">2. Browser stores token</text>
+<text x="308" y="346" text-anchor="middle" font-size="14" fill="#555">Local storage or other client state</text>
+
+<rect x="118" y="410" width="380" height="78" rx="14" fill="#ffedd5" stroke="#d0d7de"/>
+<text x="308" y="440" text-anchor="middle" font-size="16" font-weight="700" fill="#111">3. Token gets stolen</text>
+<text x="308" y="462" text-anchor="middle" font-size="14" fill="#555">Phishing, XSS, malware, or replay</text>
+
+<rect x="118" y="526" width="380" height="96" rx="14" fill="#fce7f3" stroke="#d0d7de"/>
+<text x="308" y="556" text-anchor="middle" font-size="16" font-weight="700" fill="#111">4. Backend still accepts it</text>
+<text x="308" y="578" text-anchor="middle" font-size="14" fill="#555">The token still looks valid</text>
+<text x="308" y="600" text-anchor="middle" font-size="14" fill="#555">until expiry or revocation</text>
+
+<line x1="308" y1="256" x2="308" y2="294" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="308" y1="372" x2="308" y2="410" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="308" y1="488" x2="308" y2="526" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+
+<rect x="632" y="110" width="520" height="590" rx="20" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="892" y="145" text-anchor="middle" font-size="20" font-weight="700" fill="#111">WebAuthn path</text>
+
+<rect x="702" y="178" width="380" height="78" rx="14" fill="#dbeafe" stroke="#d0d7de"/>
+<text x="892" y="208" text-anchor="middle" font-size="16" font-weight="700" fill="#111">1. Server sends challenge</text>
+<text x="892" y="230" text-anchor="middle" font-size="14" fill="#555">Fresh, single-use proof request</text>
+
+<rect x="702" y="294" width="380" height="78" rx="14" fill="#dcfce7" stroke="#d0d7de"/>
+<text x="892" y="324" text-anchor="middle" font-size="16" font-weight="700" fill="#111">2. Device signs challenge</text>
+<text x="892" y="346" text-anchor="middle" font-size="14" fill="#555">Private key stays on the authenticator</text>
+
+<rect x="702" y="410" width="380" height="78" rx="14" fill="#e9d5ff" stroke="#d0d7de"/>
+<text x="892" y="440" text-anchor="middle" font-size="16" font-weight="700" fill="#111">3. Backend verifies signature</text>
+<text x="892" y="462" text-anchor="middle" font-size="14" fill="#555">Stored public key and counter</text>
+
+<rect x="702" y="526" width="380" height="96" rx="14" fill="#dbeafe" stroke="#d0d7de"/>
+<text x="892" y="556" text-anchor="middle" font-size="16" font-weight="700" fill="#111">4. Server issues short session</text>
+<text x="892" y="578" text-anchor="middle" font-size="14" fill="#555">Fresh proof for each ceremony</text>
+<text x="892" y="600" text-anchor="middle" font-size="14" fill="#555">No reusable device secret in the browser</text>
+
+<line x1="892" y1="256" x2="892" y2="294" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="892" y1="372" x2="892" y2="410" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+<line x1="892" y1="488" x2="892" y2="526" stroke="#333" stroke-width="2" marker-end="url(#a)"/>
+</svg>

@@ -1,8 +1,6 @@
 # WebAuthn in Node.js, Passwordless Biometric Login
 
-JWT auth feels clean until a stolen token still looks valid to your server.
-
-That is the real problem. A bearer token proves possession of a token. It does not prove possession of a trusted device. If an attacker gets a reusable token, replay starts to look like a normal login.
+JWT auth feels clean until a stolen token still looks valid to your server. That is the real problem. A bearer token proves possession of a token. It does not prove possession of a trusted device. If an attacker gets a reusable token, replay starts to look like a normal login.
 
 WebAuthn changes the shape of the system. The private key stays on the user's device. Your server stores a public key, a credential ID, and a counter. Each registration or login signs a fresh challenge. The browser, the authenticator, and your backend all take part in the ceremony.
 
@@ -14,8 +12,8 @@ This guide walks through the full path in Node.js. You will set up the backend, 
 
 - [Why JWT alone falls short](#why-jwt-alone-falls-short)
 - [What WebAuthn changes](#what-webauthn-changes)
-- [Install and verify](#install-and-verify)
-- [Start the project](#start-the-project)
+- [Initialize the project](#initialize-the-project)
+- [Install dependencies](#install-dependencies)
 - [Define the data model](#define-the-data-model)
 - [Build the server foundation](#build-the-server-foundation)
 - [Registration ceremony](#registration-ceremony)
@@ -45,6 +43,10 @@ WebAuthn gives you stronger proof because the secret never leaves the authentica
 
 ![JWT replay vs WebAuthn trust model](./assets/jwt-vs-webauthn-trust-model.svg)
 
+In the above diagram, the left side shows the risk of reusable tokens. A server issues a JWT after login. The browser stores the token. An attacker steals the token and sends requests. The backend accepts the token until expiration. Replay becomes possible.
+
+On the right side the flow changes. The server sends a fresh challenge for each login. Your device signs the challenge using a private key stored inside the authenticator. The server verifies the signature before creating a short session. The key point is simple. JWT relies on a stored bearer secret. WebAuthn relies on device bound cryptographic proof created for a single challenge.
+
 ## What WebAuthn changes
 
 WebAuthn uses asymmetric cryptography.
@@ -59,70 +61,19 @@ That changes three things at once:
 
 On the web, passkeys ride on top of WebAuthn. A passkey might live on the local device, a synced platform account, or a physical security key. In practice, your app still deals with the same core objects: credential ID, public key, transports, counter, device type, and backup state.
 
-## Install and verify
+## Initialize the project
 
-### Node.js and npm
-
-Node.js runs the backend. npm installs the project packages.
-
-Install Node.js with your usual method. Two common paths are the Node installer from the official site, or nvm if you manage multiple Node versions.
+First, verify you have Node.js and npm installed. Two common paths are the Node installer from the official site, or nvm if you manage multiple Node versions.
 
 ```bash
-nvm install --lts
-nvm use --lts
 node -v
 npm -v
 ```
 
 Expected output is a Node LTS version and an npm version number.
 
-### TypeScript and tsx
+Next, create a new project folder and initialize the basic structure:
 
-TypeScript types the backend. `tsx` runs TypeScript files during development.
-
-```bash
-npm install -D typescript tsx @types/node
-```
-
-Expected output is a TypeScript version and a `tsx` version.
-
-### Express
-
-Express handles the HTTP routes.
-
-```bash
-npm install express @types/express
-npm ls express
-```
-
-Expected output is your dependency tree with `express` listed.
-
-### express-session
-
-`express-session` stores short-lived server session state. This is useful for pending challenges, pending user IDs, and post-login session state.
-
-```bash
-npm install express-session @types/express-session
-npm ls express-session
-```
-
-Expected output is your dependency tree with `express-session` listed.
-
-### SimpleWebAuthn packages
-
-`@simplewebauthn/server` generates registration and authentication options in Node.js and verifies responses. `@simplewebauthn/browser` starts browser-side registration and authentication flows.
-
-```bash
-npm install @simplewebauthn/server @simplewebauthn/browser
-npm ls @simplewebauthn/server @simplewebauthn/browser
-```
-
-Expected output is your dependency tree with both packages listed.
-
-## Start the project
-
-Create a new project and basic source folder.
-❗️
 ```bash
 mkdir webauthn-node-demo
 cd webauthn-node-demo
@@ -130,9 +81,35 @@ npm init -y
 npx tsc --init
 mkdir src
 ```
-❗️
 
-Add the scripts you need.
+## Install dependencies
+
+Now that your project is initialized, install the required packages.
+
+**TypeScript and tsx:**
+TypeScript types the backend. `tsx` runs TypeScript files during development.
+
+```bash
+npm install -D typescript tsx @types/node
+npx tsc -v
+npx tsx --version
+```
+
+**Express and session management:**
+Express handles the HTTP routes, and `express-session` stores short-lived server session state.
+
+```bash
+npm install express express-session @types/express @types/express-session
+```
+
+**SimpleWebAuthn:**
+`@simplewebauthn/server` generates registration options and verifies responses. `@simplewebauthn/browser` starts browser-side flows.
+
+```bash
+npm install @simplewebauthn/server @simplewebauthn/browser
+```
+
+Open your `package.json` and update the "scripts" block to include these commands:
 
 ```json
 {
@@ -144,24 +121,16 @@ Add the scripts you need.
 }
 ```
 
-A clean starting structure looks like this.
-
-```text
-webauthn-node-demo/
-  package.json
-  tsconfig.json
-  src/
-    app.ts
-    browser.ts
-```
-
 ## Define the data model
 
 Do not store passkeys as random JSON blobs inside the user document and hope for the best.
 
 Store them like first-class auth records. A separate table or collection per credential is a clean pattern. You want one row per passkey, linked back to the user.
 
+Create a new file at `src/app.ts`. We will build our backend here. Start by defining the data model at the top of the file:
+
 ```ts
+// src/app.ts
 type Passkey = {
     id: string;
     publicKey: Uint8Array;
@@ -197,9 +166,10 @@ What matters here:
 
 ## Build the server foundation
 
-Now wire the core Express app and relying party settings.
+Next, append the core Express app and relying party settings to `src/app.ts`:
 
 ```ts
+// src/app.ts
 import express from "express";
 import session from "express-session";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -262,11 +232,19 @@ The flow looks simple on the surface, but there are three separate actors:
 
 ![WebAuthn registration flow](./assets/webauthn-registration-flow.svg)
 
+In the above diagram, the registration ceremony links a new passkey to your account. The browser asks the server for registration options. The server generates a challenge and returns a JSON configuration.
+Next, the browser starts the WebAuthn ceremony. Your authenticator creates a new key pair after biometric or security key verification. The private key stays inside the device. The browser sends the attestation response to the server.
+
+Verification happens next. The server checks challenge, origin, and relying party ID. After validation, the server stores credential ID, public key, counter value, device type, and backup state. The account now holds a passkey.
+
 ### 1. Return registration options from the backend
 
 This endpoint creates a new user if needed, generates the registration options, and stores the challenge server-side.
 
+Append the following route to your `src/app.ts` file:
+
 ```ts
+// src/app.ts
 app.post("/auth/register/options", async (req, res) => {
     const { email } = req.body;
 
@@ -321,7 +299,10 @@ A few decisions here matter:
 
 On the browser side, you ask your backend for options, then pass them into `startRegistration()`.
 
+Now, create a new file at `src/browser.ts` to handle the client-side WebAuthn interactions. Add the following function:
+
 ```ts
+// src/browser.ts
 import { startRegistration } from "@simplewebauthn/browser";
 
 export async function registerPasskey(email: string) {
@@ -349,13 +330,18 @@ export async function registerPasskey(email: string) {
 }
 ```
 
+> **Note:** Browsers cannot run TypeScript or bare npm imports directly. In a real application, you would import `src/browser.ts` into your frontend framework (React, Vue, etc.) or bundle it using a tool like Vite, Webpack, or esbuild before serving it to the client.
+
 Under the hood, the browser now speaks to the authenticator. That might trigger Face ID, Touch ID, Windows Hello, Android biometrics, or a physical security key prompt.
 
 ### 3. Verify the registration response and save the passkey
 
 Once the browser sends the response back, verify it against the challenge and relying party details you stored earlier.
 
+Append this verification route to `src/app.ts`:
+
 ```ts
+// src/app.ts
 app.post("/auth/register/verify", async (req, res) => {
     const user = users.get(req.session.pendingUserId ?? "");
 
@@ -413,11 +399,17 @@ The server issues a fresh challenge. The authenticator signs it with the device-
 
 ![WebAuthn authentication flow](./assets/webauthn-authentication-flow.svg)
 
+In the above diagram, login occurs through a challenge response process. The browser first asks the server for authentication options. The server generates a new challenge and returns the allowed credential list.
+Your browser then triggers the authenticator. The authenticator signs the challenge using the private key stored on the device. The browser sends the signed assertion to the backend.
+
+Verification follows. The server validates signature, challenge, origin, and credential ID. The stored counter updates. A short session is issued after verification. Login depends on device proof instead of reusable credentials.
+
 ### 1. Return authentication options
 
 Fetch the user, list allowed credentials, and store the new challenge.
 
 ```ts
+// src/app.ts
 app.post("/auth/login/options", async (req, res) => {
     const { email } = req.body;
     const user = findUserByEmail(email);
@@ -444,9 +436,10 @@ app.post("/auth/login/options", async (req, res) => {
 
 ### 2. Start authentication in the browser
 
-The browser receives the options, then starts the ceremony.
+The browser receives the options, then starts the ceremony. Add the login function to your `src/browser.ts` file:
 
 ```ts
+// src/browser.ts
 import { startAuthentication } from "@simplewebauthn/browser";
 
 export async function loginWithPasskey(email: string) {
@@ -479,6 +472,7 @@ export async function loginWithPasskey(email: string) {
 This is the moment where the backend decides whether the login is real.
 
 ```ts
+// src/app.ts
 app.post("/auth/login/verify", async (req, res) => {
     const user = users.get(req.session.pendingUserId ?? "");
 
@@ -559,6 +553,7 @@ A better model is:
 A tiny route guard shows the idea.
 
 ```ts
+// src/app.ts
 function requireSession(
     req: express.Request,
     res: express.Response,
@@ -606,6 +601,10 @@ The clean pattern looks like this:
 
 ![Multi-device recovery and step-up auth](./assets/multi-device-recovery-step-up.svg)
 
+In the above diagram, the left side shows the recovery strategy. Start with a primary passkey on your main device. Add another trusted authenticator such as a second device or hardware security key. A recovery channel should exist. Device inventory helps track active credentials. Lost devices must be revoked quickly.
+
+The right side focuses on step up authentication. Sensitive actions require fresh verification. Examples include payouts, email change, API key generation, or destructive operations. When such an action begins, the server issues a new challenge. Your authenticator signs again. Access lasts for a short step up window before new verification becomes required.
+
 A simple product rule helps here. Do not hide the second passkey flow inside a deep settings page. Put "Add another passkey" right after the first successful registration.
 
 Passkeys also sync across major platform ecosystems. That helps the user experience, but your backend should still treat each registered credential as a first-class record with its own ID, public key, counter, device type, and backup state.
@@ -636,6 +635,7 @@ Use this for:
 Start by issuing new authentication options with strict user verification.
 
 ```ts
+// src/app.ts
 app.post("/auth/step-up/options", requireSession, async (req, res) => {
     const user = users.get(req.session.userId ?? "");
 
@@ -661,6 +661,7 @@ app.post("/auth/step-up/options", requireSession, async (req, res) => {
 Then verify the response and issue a short step-up window.
 
 ```ts
+// src/app.ts
 app.post("/auth/step-up/verify", requireSession, async (req, res) => {
     const user = users.get(req.session.userId ?? "");
     const passkey = user?.passkeys.find((item) => item.id === req.body.id);
@@ -669,19 +670,27 @@ app.post("/auth/step-up/verify", requireSession, async (req, res) => {
         return res.status(400).json({ verified: false });
     }
 
-    const verification = await verifyAuthenticationResponse({
-        response: req.body,
-        expectedChallenge: req.session.currentChallenge,
-        expectedOrigin: origin,
-        expectedRPID: rpID,
-        credential: {
-            id: passkey.id,
-            publicKey: passkey.publicKey,
-            counter: passkey.counter,
-            transports: passkey.transports,
-        },
-        requireUserVerification: true,
-    });
+    let verification;
+    try {
+        verification = await verifyAuthenticationResponse({
+            response: req.body,
+            expectedChallenge: req.session.currentChallenge,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+            credential: {
+                id: passkey.id,
+                publicKey: passkey.publicKey,
+                counter: passkey.counter,
+                transports: passkey.transports,
+            },
+            requireUserVerification: true,
+        });
+    } catch (error) {
+        return res.status(400).json({
+            verified: false,
+            error: error instanceof Error ? error.message : "Step-up failed",
+        });
+    }
 
     if (!verification.verified) {
         return res.status(400).json({ verified: false });
@@ -698,6 +707,7 @@ app.post("/auth/step-up/verify", requireSession, async (req, res) => {
 A tiny guard handles the rest.
 
 ```ts
+// src/app.ts
 function requireRecentStepUp(
     req: express.Request,
     res: express.Response,
@@ -716,6 +726,16 @@ app.post("/billing/payout", requireSession, requireRecentStepUp, (req, res) => {
 ```
 
 This is where WebAuthn stops being a login feature and starts becoming part of your authorization model.
+
+Now that all your routes and guards are built, append the server start command to the very bottom of `src/app.ts` to bring the backend to life:
+
+```ts
+// src/app.ts
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+});
+```
 
 ## Recap
 

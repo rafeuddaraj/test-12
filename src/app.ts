@@ -13,20 +13,23 @@ const rpName = "Node Auth Lab";
 const rpID = "localhost";
 const origin = "http://localhost:3000";
 const port = 3000;
+type RegistrationUserID = NonNullable<
+  Parameters<typeof generateRegistrationOptions>[0]["userID"]
+>;
 
 type Passkey = {
   id: string;
-  publicKey: Uint8Array;
+  publicKey: WebAuthnCredential["publicKey"];
   counter: number;
   deviceType: "singleDevice" | "multiDevice";
   backedUp: boolean;
-  transports?: string[];
+  transports?: WebAuthnCredential["transports"];
 };
 
 type User = {
   id: string;
   email: string;
-  webAuthnUserID: Uint8Array;
+  webAuthnUserID: RegistrationUserID;
   passkeys: Passkey[];
 };
 
@@ -34,6 +37,34 @@ const users = new Map<string, User>();
 
 function findUserByEmail(email: string): User | undefined {
   return [...users.values()].find((user) => user.email === email);
+}
+
+function toCredentialDescriptor(passkey: Passkey) {
+  if (passkey.transports) {
+    return {
+      id: passkey.id,
+      transports: passkey.transports,
+    };
+  }
+
+  return { id: passkey.id };
+}
+
+function toWebAuthnCredential(passkey: Passkey): WebAuthnCredential {
+  if (passkey.transports) {
+    return {
+      id: passkey.id,
+      publicKey: passkey.publicKey,
+      counter: passkey.counter,
+      transports: passkey.transports,
+    };
+  }
+
+  return {
+    id: passkey.id,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  };
 }
 
 declare module "express-session" {
@@ -99,7 +130,7 @@ app.post("/auth/register/options", async (req, res) => {
     user = {
       id: randomUUID(),
       email,
-      webAuthnUserID: randomBytes(32),
+      webAuthnUserID: randomBytes(32) as RegistrationUserID,
       passkeys: [],
     };
 
@@ -113,10 +144,7 @@ app.post("/auth/register/options", async (req, res) => {
     userDisplayName: user.email,
     userID: user.webAuthnUserID,
     attestationType: "none",
-    excludeCredentials: user.passkeys.map((passkey) => ({
-      id: passkey.id,
-      transports: passkey.transports,
-    })),
+    excludeCredentials: user.passkeys.map(toCredentialDescriptor),
     authenticatorSelection: {
       residentKey: "preferred",
       userVerification: "preferred",
@@ -158,17 +186,20 @@ app.post("/auth/register/verify", async (req, res) => {
   const { credential, credentialDeviceType, credentialBackedUp } =
     verification.registrationInfo;
 
-  user.passkeys.push({
+  const passkey: Passkey = {
     id: credential.id,
     publicKey: credential.publicKey,
     counter: credential.counter,
-    transports: credential.transports,
     deviceType: credentialDeviceType,
     backedUp: credentialBackedUp,
-  });
+  };
+  if (credential.transports) {
+    passkey.transports = credential.transports;
+  }
+  user.passkeys.push(passkey);
 
-  req.session.currentChallenge = undefined;
-  req.session.pendingUserId = undefined;
+  delete req.session.currentChallenge;
+  delete req.session.pendingUserId;
 
   return res.json({ verified: true });
 });
@@ -183,10 +214,7 @@ app.post("/auth/login/options", async (req, res) => {
 
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: user.passkeys.map((passkey) => ({
-      id: passkey.id,
-      transports: passkey.transports,
-    })),
+    allowCredentials: user.passkeys.map(toCredentialDescriptor),
     userVerification: "preferred",
   });
 
@@ -208,12 +236,7 @@ app.post("/auth/login/verify", async (req, res) => {
     return res.status(400).json({ verified: false, error: "Passkey not found" });
   }
 
-  const credential: WebAuthnCredential = {
-    id: passkey.id,
-    publicKey: passkey.publicKey,
-    counter: passkey.counter,
-    transports: passkey.transports,
-  };
+  const credential = toWebAuthnCredential(passkey);
 
   let verification;
   try {
@@ -238,8 +261,8 @@ app.post("/auth/login/verify", async (req, res) => {
 
   passkey.counter = verification.authenticationInfo.newCounter;
   req.session.userId = user.id;
-  req.session.currentChallenge = undefined;
-  req.session.pendingUserId = undefined;
+  delete req.session.currentChallenge;
+  delete req.session.pendingUserId;
 
   return res.json({ verified: true });
 });
@@ -266,10 +289,7 @@ app.post("/auth/step-up/options", requireSession, async (req, res) => {
 
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: user.passkeys.map((passkey) => ({
-      id: passkey.id,
-      transports: passkey.transports,
-    })),
+    allowCredentials: user.passkeys.map(toCredentialDescriptor),
     userVerification: "required",
   });
 
@@ -292,12 +312,7 @@ app.post("/auth/step-up/verify", requireSession, async (req, res) => {
       expectedChallenge: req.session.currentChallenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      credential: {
-        id: passkey.id,
-        publicKey: passkey.publicKey,
-        counter: passkey.counter,
-        transports: passkey.transports,
-      },
+      credential: toWebAuthnCredential(passkey),
       requireUserVerification: true,
     });
   } catch (error) {
@@ -313,7 +328,7 @@ app.post("/auth/step-up/verify", requireSession, async (req, res) => {
 
   passkey.counter = verification.authenticationInfo.newCounter;
   req.session.stepUpUntil = Date.now() + 5 * 60 * 1000;
-  req.session.currentChallenge = undefined;
+  delete req.session.currentChallenge;
 
   return res.json({ verified: true });
 });
